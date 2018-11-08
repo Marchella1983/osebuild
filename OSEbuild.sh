@@ -14,7 +14,7 @@ BACKUP="on"
 #             ANDROID NDK
 ###                 on&off
 ANDROID_NDK_AU_DOWNLOAD="on"
-ANDROID_NDK_REV="r13b"               #32bit"r10e"
+ANDROID_NDK_REV="r13b"  #... to r17c, 32bit"r10e"
 ### ANDROID_NDK_AU_DOWNLOAD = off ##
 ANDROID_NDK_ROOT=$PWD/../android-ndk
 #################################################
@@ -71,7 +71,6 @@ PIE_=""
 fi
 CFLAGS="-g -DANDROID -D__ANDROID_API__=${ANDROID_API_LEVEL} -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes $CFLAGS $PIE"
 LDFLAGS="-Wl,--build-id -Wl,--warn-shared-textrel -Wl,--fatal-warnings -Wl,-s $LDFLAGS $PIE_"
-#LIBS="-lm -ldl $LIBS"
 case "$ARCH" in
 arm)
 Toolchain="arm-linux-androideabi"
@@ -131,7 +130,7 @@ CONFIG
 OSCAM_MAKE
 CFLAGS="";
 LDFLAGS="";
-#LIBS="";
+EXTRA_LIBS="";
 }
 ####
 CONFIG(){
@@ -146,7 +145,16 @@ N_PCSC="";
 I_PCSC="";
 I_USE="";
 N_USE="";
-case $selected in A*|v*.x)Build=$BOX;;esac
+case $selected in A*|v*.x)Build=$BOX;;
+stapi)Build="$BOX"
+if [ -e $ddir/patches/stapi/libwi.a ] || [ -e $tcdir/sysroot/usr/lib/libwi.a ] ; then
+I_USE=" USE_STAPI=1 AL_MODEL=supremo EXTRA_FLAGS=-Dsupremo"
+N_USE="-stapi";
+[ ! -e $rdir/$CAM_F/stapi.patch ] && cp $ddir/patches/stapi/stapi.patch $rdir/$CAM_F/ && cd $rdir/$CAM_F && patch -p0 < stapi.patch | $progressbox;
+[ -e $rdir/$CAM_F/*.rej ] && dialog --title "ERROR!" --msgbox '                  PATCH ERROR! '$CAM_F'' 5 60 && exit;
+fi
+;;
+esac
 cmd=(dialog --separate-output --no-cancel --checklist "$CAM_F $REV: ($Build: $ABI)" 16 60 10)
 options=(conf_dir: "$CONF" off	
 	$usb
@@ -194,15 +202,15 @@ echo -e "------------------------------------------">>$rdir/$CAM_F/Distribution/
 echo -e "OSCAM$NP-Rev:$FILE_REV-$Build ">>$rdir/$CAM_F/Distribution/build.log;
 echo -e "$Build $ABI ">>$rdir/$CAM_F/Distribution/build.log;
 echo -e "------------------------------------------">>$rdir/$CAM_F/Distribution/build.log;
-#echo -e "make android-arm CROSS=${CROSS} USE_LIBCRYPTO=1 OSCAM_BIN=Distribution/${CAMNAME}${smargo} CONF_DIR=${CONF} CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS} LIBS="${LIBS}"${I_SSL}${I_LIBUSB}${I_PCSC}${I_USE}">>$rdir/$CAM_F/Distribution/build.log;
+#echo -e "make android-arm CROSS=${CROSS} USE_LIBCRYPTO=1 OSCAM_BIN=Distribution/${CAMNAME}${smargo} CONF_DIR=${CONF} CFLAGS="${CFLAGS}" "${LDFLAGS}" EXTRA_LIBS="${EXTRA_LIBS}"${I_SSL}${I_LIBUSB}${I_PCSC}${I_USE}">>$rdir/$CAM_F/Distribution/build.log;
 echo -e "Enabled configuration --------------------">>$rdir/$CAM_F/Distribution/build.log;
 ./config.sh -s 2>&1 | tee -a "$rdir/$CAM_F/Distribution/build.log" | $progressbox
-make android-arm CROSS=${CROSS} USE_LIBCRYPTO=1 OSCAM_BIN=Distribution/${CAMNAME}${smargo} CONF_DIR=${CONF} CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"${I_SSL}${I_LIBUSB}${I_PCSC}${I_USE} 2>&1 |tee -a "$rdir/$CAM_F/Distribution/build.log" | $progressbox
+make android-arm CROSS=${CROSS} USE_LIBCRYPTO=1 OSCAM_BIN=Distribution/${CAMNAME}${smargo} CONF_DIR=${CONF} CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" EXTRA_LIBS="${EXTRA_LIBS}"${I_SSL}${I_LIBUSB}${I_PCSC}${I_USE} 2>&1 |tee -a "$rdir/$CAM_F/Distribution/build.log" | $progressbox
 echo -e "------------------------------------------">>$rdir/$CAM_F/Distribution/build.log;
 echo -e "$date">>$rdir/$CAM_F/Distribution/build.log;
 echo -e "------------------------------------------">>$rdir/$CAM_F/Distribution/build.log;
 else
-make android-arm CROSS=${CROSS} USE_LIBCRYPTO=1 OSCAM_BIN=Distribution/${CAMNAME}${smargo} CONF_DIR=${CONF} CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"${I_SSL}${I_LIBUSB}${I_PCSC}${I_USE} 2>&1 | $progressbox
+make android-arm CROSS=${CROSS} USE_LIBCRYPTO=1 OSCAM_BIN=Distribution/${CAMNAME}${smargo} CONF_DIR=${CONF} CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" EXTRA_LIBS="${EXTRA_LIBS}"${I_SSL}${I_LIBUSB}${I_PCSC}${I_USE} 2>&1 | $progressbox
 fi
 sleep 2
 if [ ! -e $rdir/$CAM_F/Distribution/$CAMNAME ] ; then
@@ -247,7 +255,97 @@ zip -r $ddir/$CAMNAME.zip -xi $apkdir;
 zip -j $ddir/$CAMNAME.zip -xi $ddir/application/cam.apk;
 rm -rf $rdir/storage;
 fi
+[ "$selected" = "stapi" ] && plugin;
 [ "$UPX" = "on" ] && rm -rf $rdir/$CAM_F/Distribution/$CAMNAME-upx;
+}
+####
+plugin() {
+plugin_su="plugin_su/oscam";
+mkdir -p $rdir/$plugin_su
+cd $rdir
+wget -q -O $rdir/plugin_su/OSCam.png https://raw.githubusercontent.com/su-mak/app/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+cp $rdir/$CAM_F/Distribution/$CAMNAME $rdir/plugin_su/OSCam
+if [ ! -e $rdir/plugin_su/OSCam.descr ] ; then
+echo "# oscam-1.20-unstable_svn-${REV}${NP}" >> $rdir/plugin_su/OSCam.descr
+echo "oscam-1.20-unstable_svn-${REV}${NP}" >> $rdir/plugin_su/OSCam.descr
+echo "" >> $rdir/plugin_su/OSCam.descr
+echo "[NEW_API_V1]" >> $rdir/plugin_su/OSCam.descr
+echo "" >> $rdir/plugin_su/OSCam.descr
+#echo "uninstall :" >> $rdir/plugin_su/OSCam.descr
+#echo "/data/plugin/oscam*" >> $rdir/plugin_su/OSCam.descr
+#echo "/data/plugin/OSCam*" >> $rdir/plugin_su/OSCam.descr
+#echo "" >> $rdir/plugin_su/OSCam.descr
+fi
+if [ ! -e $rdir/$plugin_su/oscam.conf ] ; then
+echo "" >> $rdir/$plugin_su/oscam.conf
+echo "[global]" >> $rdir/$plugin_su/oscam.conf
+echo "disablelog                    = 1" >> $rdir/$plugin_su/oscam.conf
+echo "logfile                       = $CONF/oscam.log" >> $rdir/$plugin_su/oscam.conf
+echo "clienttimeout                 = 8000" >> $rdir/$plugin_su/oscam.conf
+echo "nice                          = -1" >> $rdir/$plugin_su/oscam.conf
+echo "preferlocalcards              = 1" >> $rdir/$plugin_su/oscam.conf
+echo "" >> $rdir/$plugin_su/oscam.conf
+echo "[streamrelay]" >> $rdir/$plugin_su/oscam.conf
+echo "stream_relay_enabled          = 0" >> $rdir/$plugin_su/oscam.conf
+echo "" >> $rdir/$plugin_su/oscam.conf
+echo "[dvbapi]" >> $rdir/$plugin_su/oscam.conf
+echo "enabled                       = 1" >> $rdir/$plugin_su/oscam.conf
+echo "au                            = 1" >> $rdir/$plugin_su/oscam.conf
+echo "pmt_mode                      = 5" >> $rdir/$plugin_su/oscam.conf
+echo "request_mode                  = 1" >> $rdir/$plugin_su/oscam.conf
+echo "user                          = dvbapiau" >> $rdir/$plugin_su/oscam.conf
+echo "write_sdt_prov                = 1" >> $rdir/$plugin_su/oscam.conf
+echo "" >> $rdir/$plugin_su/oscam.conf
+echo "[webif]" >> $rdir/$plugin_su/oscam.conf
+echo "httpport                      = 8888" >> $rdir/$plugin_su/oscam.conf
+echo "httpallowed                   = 127.0.0.1,192.168.0.1-192.168.255.255" >> $rdir/$plugin_su/oscam.conf
+echo "" >> $rdir/$plugin_su/oscam.conf
+fi
+if [ ! -e $rdir/$plugin_su/oscam.user ] ; then
+echo "" >> $rdir/$plugin_su/oscam.user
+echo "[account]" >> $rdir/$plugin_su/oscam.user
+echo "user                          = dvbapiau" >> $rdir/$plugin_su/oscam.user
+echo "group                         = 1,2,3,4,5,6,7,8" >> $rdir/$plugin_su/oscam.user
+echo "" >> $rdir/$plugin_su/oscam.user
+fi
+if [ ! -e $rdir/$plugin_su/oscam.server ] ; then
+echo "" >> $rdir/$plugin_su/oscam.server
+echo "[reader]" >> $rdir/$plugin_su/oscam.server
+echo "label                         = smartcard" >> $rdir/$plugin_su/oscam.server
+echo "enable                        = 0" >> $rdir/$plugin_su/oscam.server
+echo "protocol                      = stapi" >> $rdir/$plugin_su/oscam.server
+echo "device                        = 000:001" >> $rdir/$plugin_su/oscam.server
+echo "group                         = 1" >> $rdir/$plugin_su/oscam.server
+echo "" >> $rdir/$plugin_su/oscam.server
+fi
+if [ ! -e $rdir/$plugin_su/oscam.dvbapi ] ; then
+echo "S: stapi1 pmt1_1.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt1_2.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt1_3.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt1_4.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt1_5.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt2_1.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt2_2.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt2_3.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt2_4.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt2_5.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt3_1.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt3_2.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt3_3.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt3_4.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt3_5.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt4_1.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt4_2.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt4_3.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt4_4.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+echo "S: stapi1 pmt4_5.tmp" >> $rdir/$plugin_su/oscam.dvbapi
+fi
+zip -r plugin_su.zip -xi plugin_su
+zip -j $ddir/$CAMNAME.zip -xi plugin_su.zip;
+rm -rf $rdir/plugin_su*
 }
 ####
 OSCAM_EMU() {
@@ -652,6 +750,7 @@ clear && exit;
 }
 ####
 menu_plus(){
+[ -e $ddir/patches/stapi/libwi.a ] && [ -e $ddir/patches/stapi/stapi.patch ] && stapi="  stapi	"'Openbox_Xcruiser(experimental)'" " ;
 selected=$(dialog --stdout --clear --colors --backtitle $0 --title "" --menu "" 16 60 10 \
 	A3	"Amiko A3" \
 	A4	"Amiko A4" \
@@ -670,7 +769,8 @@ selected=$(dialog --stdout --clear --colors --backtitle $0 --title "" --menu "" 
 	21	"5.0 Lollipop" \
 	22	"5.1 Lollipop" \
 	23	"6.0 Marshmallow" \
-	24	"7.0 Nougat");
+	24	"7.0 Nougat" \
+	$stapi);
 case $selected in
 	A3)
 	BOX="Amiko_A3"
@@ -724,6 +824,19 @@ case $selected in
 	LDFLAGS="-march=armv7-a -Wl,--fix-cortex-a8"
 	ABI="armeabi-v7a";
 	android
+	;;
+	stapi)
+	BOX="Openbox_Xcruiser"
+	ANDROID_API_LEVEL="21"
+	ANDROID_APP="off"
+	ARCH="arm";
+	CFLAGS="-Os -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16"
+	LDFLAGS="-march=armv7-a -Wl,--fix-cortex-a8"
+	EXTRA_LIBS="-L$ddir/patches/stapi -lwi"
+	ABI="armeabi-v7a";
+	CONF="/data/plugin/oscam"
+	android
+	rm -rf $rdir/$CAM_F
 	;;
 	9|12|13|14|15|16|17|18|19|21|22|23|24)
 	ANDROID_API_LEVEL=$selected
@@ -811,6 +924,9 @@ do
 	done
 clear && exit;
 }
+#######################
+export NCURSES_NO_UTF8_ACS=1;
+#export LOCALE=UTF-8
 #######################
 case $1 in
 h|-h|--h|help|-help|--help|Help|HELP)
