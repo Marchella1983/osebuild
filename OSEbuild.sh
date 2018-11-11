@@ -3,7 +3,6 @@
 #                OSEbuild Android
 #################################################
 # Configure where we can find things here
-# When editing, delete the toolchains folder!
 #################################################
 #          on&off
 PLUS_MENU="on"
@@ -11,10 +10,12 @@ BUILD_LOG="on"
 BACKUP="on"
 #
 #################################################
+# When editing, delete the toolchains folder!
+#################################################
 #             ANDROID NDK
 ###                 on&off
 ANDROID_NDK_AU_DOWNLOAD="on"
-ANDROID_NDK_REV="r13b"  #... to r17c, 32bit"r10e"
+ANDROID_NDK_REV="r13b"  #... to r18b, 32bit"r10e"
 ### ANDROID_NDK_AU_DOWNLOAD = off ##
 ANDROID_NDK_ROOT=$PWD/../android-ndk
 #################################################
@@ -61,6 +62,7 @@ M_TYPE="x86"
 fi
 CONF="/usr/local/etc";
 ####
+NDK_REV=${ANDROID_NDK_REV:1:2};
 android(){
 if [ "$ANDROID_API_LEVEL" -ge "16" ] ; then
 PIE="-fPIE"
@@ -115,13 +117,13 @@ case "$ANDROID_API_LEVEL" in
 25)PLATFORM_VERSIONS="7.1_Nougat";;
 26)PLATFORM_VERSIONS="8.0_Oreo";;
 27)PLATFORM_VERSIONS="8.1_Oreo";;
+28)PLATFORM_VERSIONS="9.0_Pie";;
 *)PLATFORM_VERSIONS="API_level_${ANDROID_API_LEVEL}";;
 esac
 tcdir="$rdir/toolchains/Android_${PLATFORM_VERSIONS}-${ARCH}"
 Build="Android_${PLATFORM_VERSIONS}-${ARCH}"
 usb=""
 pcsc=""
-NDK_REV=${ANDROID_NDK_REV:1:2};
 [ "$NDK_REV" -ge "15" ] && LIBUSB_ANDROID="off";
 [ "$LIBUSB_ANDROID" = "on" ] && usb="libusb "USB_devices" off";
 [ "$ANDROID_APP" = "on" ] && [ "$LIBUSB_ANDROID" = "on" ] && [ "$PCSC_ANDROID" = "on" ] && pcsc="pcsc "PCSC_readers" off";
@@ -543,6 +545,29 @@ fi
 fi
 tar -xvf $btdir/openssl-${OPENSSL_VERSION}.tar.gz
 cd $btdir/openssl-${OPENSSL_VERSION}
+####
+if [ ! -e 10-main.conf.patch ] && [ "$NDK_REV" -ge "18" ] ; then
+echo '@@ -900,7 +900,7 @@' >> 10-main.conf.patch
+echo '         # systems are perfectly capable of executing binaries targeting' >> 10-main.conf.patch
+echo '         # Froyo. Keep in mind that in the nutshell Android builds are' >> 10-main.conf.patch
+echo '         # about JNI, i.e. shared libraries, not applications.' >> 10-main.conf.patch
+echo '-        cflags           => add(picker(default => "-mandroid -fPIC --sysroot=\$(CROSS_SYSROOT) -Wa,--noexecstack")),' >> 10-main.conf.patch
+echo '+        cflags           => add(picker(default => "-fPIC --sysroot=\$(CROSS_SYSROOT) -Wa,--noexecstack")),' >> 10-main.conf.patch
+echo '         bin_cflags       => "-pie",' >> 10-main.conf.patch
+echo '     },' >> 10-main.conf.patch
+echo '     "android-x86" => {' >> 10-main.conf.patch
+echo '@@ -940,7 +940,7 @@' >> 10-main.conf.patch
+echo ' ' >> 10-main.conf.patch
+echo '     "android64" => {' >> 10-main.conf.patch
+echo '         inherit_from     => [ "linux-generic64" ],' >> 10-main.conf.patch
+echo '-        cflags           => add(picker(default => "-mandroid -fPIC --sysroot=\$(CROSS_SYSROOT) -Wa,--noexecstack")),' >> 10-main.conf.patch
+echo '+        cflags           => add(picker(default => "-fPIC --sysroot=\$(CROSS_SYSROOT) -Wa,--noexecstack")),' >> 10-main.conf.patch
+echo '         bin_cflags       => "-pie",' >> 10-main.conf.patch
+echo '     },' >> 10-main.conf.patch
+echo '     "android64-aarch64" => {' >> 10-main.conf.patch
+patch -p1 < 10-main.conf.patch  Configurations/10-main.conf
+fi
+####
 export CROSS_SYSROOT=$tcdir/sysroot
     case $ABI in
 	armeabi)CONFIG="android-armeabi";;
@@ -750,7 +775,11 @@ clear && exit;
 }
 ####
 menu_plus(){
-[ -e $ddir/patches/stapi/libwi.a ] && [ -e $ddir/patches/stapi/stapi.patch ] && stapi="  stapi	"'Openbox_Xcruiser(experimental)'" " ;
+if [ "$NDK_REV" -ge "17" ] ; then
+Oreo="26	"'8.0_Oreo'" " ;
+Pie="28	"'9.0_Pie'" " ;
+fi
+[ -e $ddir/patches/stapi/libwi.a ] && [ -e $ddir/patches/stapi/stapi.patch ] && stapi="stapi	"'Openbox_Xcruiser(experimental)'" " ;
 selected=$(dialog --stdout --clear --colors --backtitle $0 --title "" --menu "" 16 60 10 \
 	A3	"Amiko A3" \
 	A4	"Amiko A4" \
@@ -770,6 +799,8 @@ selected=$(dialog --stdout --clear --colors --backtitle $0 --title "" --menu "" 
 	22	"5.1 Lollipop" \
 	23	"6.0 Marshmallow" \
 	24	"7.0 Nougat" \
+	$Oreo \
+	$Pie \
 	$stapi);
 case $selected in
 	A3)
@@ -838,7 +869,7 @@ case $selected in
 	android
 	rm -rf $rdir/$CAM_F
 	;;
-	9|12|13|14|15|16|17|18|19|21|22|23|24)
+	9|12|13|14|15|16|17|18|19|21|22|23|24|26|27|28)
 	ANDROID_API_LEVEL=$selected
 	menu_android
 	;;
