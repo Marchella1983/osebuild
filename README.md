@@ -22,7 +22,7 @@ or
 ```sh
 mkdir osebuild
 cd osebuild
-wget https://raw.githubusercontent.com/su-mak/osebuild/branches/old/OSEbuild.sh
+wget https://raw.githubusercontent.com/su-mak/osebuild/old/OSEbuild.sh
 chmod 755 OSEbuild.sh
 ./OSEbuild.sh -help
 ```
