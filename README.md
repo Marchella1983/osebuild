@@ -14,7 +14,7 @@ apt-get install dialog subversion gcc make zip python pkg-config
 ```
 ###### Install:
 ```sh
-svn co https://github.com/su-mak/osebuild/trunk osebuild
+svn co https://github.com/su-mak/osebuild/branches/old osebuild
 cd osebuild
 ./OSEbuild.sh -help
 ```
@@ -22,7 +22,7 @@ or
 ```sh
 mkdir osebuild
 cd osebuild
-wget https://raw.githubusercontent.com/su-mak/osebuild/master/OSEbuild.sh
+wget https://raw.githubusercontent.com/su-mak/osebuild/branches/old/OSEbuild.sh
 chmod 755 OSEbuild.sh
 ./OSEbuild.sh -help
 ```
