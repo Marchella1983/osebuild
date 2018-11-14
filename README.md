@@ -17,6 +17,14 @@ svn co https://github.com/su-mak/osebuild/trunk osebuild
 cd osebuild
 ./build.sh -help
 ```
+or
+```sh
+mkdir osebuild
+cd osebuild
+wget https://raw.githubusercontent.com/su-mak/osebuild/master/build.sh
+chmod 755 build.sh
+./build.sh -help
+```
 #### Building from Source
 ```sh
 ./build.sh

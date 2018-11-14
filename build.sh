@@ -1,7 +1,7 @@
 #! /bin/bash
 ####
 NDK=r17c
-####
+#### true|false
 BUILD_LOG=true
 ####
 APP=true
@@ -44,7 +44,7 @@ do
 	Ax)
 	BOX="Amiko"
 	API="19"
-	ABI="armeabi-v7a";
+	ABI="armeabi-v7a"
 	CONF="/var/tuxbox/config"
 	APP=false
 	BUILD
@@ -52,14 +52,15 @@ do
 	WP2)
 	BOX="WeTek_Play_2"
 	API="21"
-	ABI="armeabi-v7a";
+	ABI="armeabi-v7a"
+	CONF="/data/local"
 	APP=false
 	BUILD
 	;;
 	stapi)
 	BOX="Openbox_Xcruiser"
 	API="21"
-	ABI="armeabi-v7a";
+	ABI="armeabi-v7a"
 	CONF="/data/plugin/oscam"
 	APP=false
 	BUILD
@@ -71,7 +72,7 @@ do
 	;;
 	esac
 	done
-clear && exit;
+clear
 }
 ######
 menu_abi(){
@@ -102,7 +103,7 @@ do
 	;;
 	esac
 	done
-clear;
+clear
 }
 ######
 [ ! -d $SOURCEDIR ] && mkdir -p $SOURCEDIR
@@ -110,7 +111,7 @@ dir=`pwd`
 cd $SOURCEDIR
 sources=`pwd`
 ######
-export NCURSES_NO_UTF8_ACS=1;
+export NCURSES_NO_UTF8_ACS=1
 #export LOCALE=UTF-8
 progressbox="dialog --stdout ""$1"" --progressbox 15 70";
 ######
@@ -124,7 +125,7 @@ PLATFORM=android-$API
 case $choice in A*|W*)PLATFORM=$BOX;;esac
 if [ "$choice" = "stapi" ] ; then
 PLATFORM=$BOX
-patch -d $sources/$cam -p0 < $dir/patches/stapi/stapi.patch | $progressbox;
+patch -d $sources/$cam -p0 < $dir/patches/stapi/stapi.patch | $progressbox
 rej=($sources/$cam/*.rej)
 [ -e "${rej[0]}" ] && dialog --title "ERROR!" --msgbox '                PATCH ERROR! '$cam'' 5 60 && exit;
 fi
@@ -153,7 +154,7 @@ ssl
 [ ! -e $dir/packages/oscam.mk ] && wget -q -P $dir/packages -c https://raw.githubusercontent.com/su-mak/osebuild/master/packages/oscam.mk;
 if $BUILD_LOG ; then
 rm -rf $sources/build.log
-$sources/android-ndk-$NDK/ndk-build APP_ABI=$ABI APP_PLATFORM=android-$API NDK_PROJECT_PATH=$sources NDK_LOG=1 APP_BUILD_SCRIPT=$dir/packages/oscam.mk 2>&1 | tee -a "$sources/build.log" | $progressbox;
+$sources/android-ndk-$NDK/ndk-build APP_ABI=$ABI APP_PLATFORM=android-$API NDK_PROJECT_PATH=$sources NDK_LOG=1 APP_BUILD_SCRIPT=$dir/packages/oscam.mk 2>&1 | tee -a "$sources/build.log" | $progressbox
 else
 $sources/android-ndk-$NDK/ndk-build APP_ABI=$ABI APP_PLATFORM=android-$API NDK_PROJECT_PATH=$sources APP_BUILD_SCRIPT=$dir/packages/oscam.mk 2>&1 | $progressbox
 fi
@@ -162,7 +163,7 @@ dialog --title "WARNING!" --msgbox "\n                     BUILD ERROR!" 7 60
 else
 $UPX && UPX_ && $sources/upx-${UPX_VERSION}-amd64_linux/upx --brute $sources/libs/$ABI/oscam;
 name="oscam-1.20-unstable_svn-${REV}${TYPE}-$PLATFORM"
-ZIP | $progressbox;
+ZIP | $progressbox
 dialog --title "$ABI" --msgbox "\n $name" 7 60
 fi
 }
@@ -195,7 +196,7 @@ FILE="android-ndk-$NDK-linux-x86_64.zip"
 URL="https://dl.google.com/android/repository/$FILE"
 if [ ! -d $sources/android-ndk-$NDK ] ; then
 [ ! -e $sources/$FILE ] && SOURCE;
-unzip $sources/$FILE | $progressbox;
+unzip $sources/$FILE | $progressbox
 fi
 clear;
 }
@@ -246,7 +247,7 @@ URL="https://github.com/upx/upx/releases/download/v${UPX_VERSION}/$FILE"
 SOURCE
 tar -xf $sources/$FILE
 fi
-clear;
+clear
 }
 ######
 SOURCE(){
@@ -256,45 +257,44 @@ SOURCE(){
 ######
 rev() {
 if [ ! -e $sources/$cam ] ; then
-REV=$(dialog --no-cancel --title "Online SVN:$REV_EMU ($SVN_MIN to $REV_EMU)" --inputbox "$REV" 8 30 "$REV_EMU" 3>&1 1>&2 2>&3)
+REV=$(dialog --no-cancel --title " OSCam$TYPE ($SVN_MIN to $REV_EMU)" --inputbox "" 7 35 "$REV_EMU" 3>&1 1>&2 2>&3)
+SVN
 else
-dialog --title "$cam UPDATE" --backtitle "" --yesno "Online SVN ('$REV_EMU') = Local SVN ('$FILE_REV')" 7 50
+dialog --title "OSCam$TYPE UPDATE" --backtitle "" --yesno "Online SVN ('$REV_EMU') = Local SVN ('$FILE_REV')" 7 50
 response=$?
 case $response in
-   0) 
-REV=$(dialog  --no-cancel --title "Local svn:$FILE_REV  ($SVN_MIN to $REV_EMU)" --inputbox "$REV" 8 35 "$REV_EMU" 3>&1 1>&2 2>&3)
-;;
-1)menu_api;;
+   0)REV=$(dialog  --no-cancel --title " Local svn:$FILE_REV ($SVN_MIN to $REV_EMU)" --inputbox "" 8 35 "$REV_EMU" 3>&1 1>&2 2>&3) && SVN;;
 esac
 fi
+FILE_REV=$(svn info $sources/$cam | grep Revision | cut -d ' ' -f 2)
+menu_api
+}
+######
+SVN(){
 if [ "$REV" -ge $SVN_MIN ] && [ "$REV" -le "$REV_EMU" ] ; then
 null="null"
 else
 rev
 fi
-if [ -e $sources/$cam  ] ; then
-rm -rf $sources/$cam 
-fi
 if [ "$cam" = "OSCam_Emu" ] ; then
+[ -e $sources/$cam ] && rm -rf $sources/$cam;
 svn co -r $REV $SVN_EMU emu | $progressbox
 REV=$(grep -a " Makefile" emu/oscam-emu.patch | grep -a "revision" | cut -c24-28)
 svn co -r $REV $SVN_SOURCE $sources/$cam | $progressbox
+patch -d $sources/$cam -p0 < $sources/emu/oscam-emu.patch | $progressbox
 else
 svn co -r $REV $SVN_SOURCE $sources/$cam | $progressbox
 REV=$(svn info $sources/$cam | grep Revision | cut -d ' ' -f 2)
 fi
-FILE_REV=$(svn info $sources/$cam | grep Revision | cut -d ' ' -f 2)
-[ "$cam" = "OSCam_Emu" ] && patch -d $sources/$cam -p0 < $sources/emu/oscam-emu.patch | $progressbox;
-menu_api
 }
 ####
 OSCAM() {
 SVN_SOURCE="http://www.streamboard.tv/svn/oscam/trunk"
 REV_EMU=$(svn info $SVN_SOURCE | grep Revision | cut -d ' ' -f 2)
 REV=$REV_EMU
-SVN_MIN="11438";
-TYPE="";
-cam="OSCam";
+SVN_MIN="11438"
+TYPE=""
+cam="OSCam"
 [ -e $sources/$cam ] && FILE_REV=$(svn info $sources/$cam | grep Revision | cut -d ' ' -f 2);
 rev
 }
@@ -304,9 +304,9 @@ SVN_EMU="https://github.com/oscam-emu/oscam-emu/trunk"
 SVN_SOURCE="http://www.streamboard.tv/svn/oscam/trunk"
 REV_EMU=$(svn info $SVN_EMU | grep Revision | cut -d ' ' -f 2)
 REV=$REV_EMU
-SVN_MIN="1867";
-TYPE="-emu";
-cam="OSCam_Emu";
+SVN_MIN="1867"
+TYPE="-emu"
+cam="OSCam_Emu"
 [ -e $sources/emu ] && FILE_REV=$(svn info $sources/emu | grep Revision | cut -d ' ' -f 2);
 rev
 }
@@ -314,9 +314,9 @@ OSCAM_PATCHED() {
 SVN_SOURCE="https://github.com/oscam-emu/oscam-patched/trunk"
 REV_EMU=$(svn info $SVN_SOURCE | grep Revision | cut -d ' ' -f 2)
 REV=$REV_EMU
-SVN_MIN="1595";
-TYPE="-patched";
-cam="OSCam_patched";
+SVN_MIN="1595"
+TYPE="-patched"
+cam="OSCam_patched"
 [ -e $sources/$cam ] && FILE_REV=$(svn info $sources/$cam | grep Revision | cut -d ' ' -f 2);
 rev
 }
@@ -331,7 +331,6 @@ case $selected in
 	2) OSCAM_EMU ;;
 	4) OSCAM_PATCHED ;;
 	esac
-clear && exit;
 }
 ##############
 case $1 in

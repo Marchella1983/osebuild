@@ -25,8 +25,6 @@ LOCAL_SRC_FILES := \
 		libusb/os/threads_posix.c \
 		libusb/os/linux_netlink.c
 
-LOCAL_LDLIBS := -llog
-LOCAL_LDFLAGS := -llog -Wl,-s
 LOCAL_MODULE := libusb1.0_static
 
 include $(BUILD_STATIC_LIBRARY)
